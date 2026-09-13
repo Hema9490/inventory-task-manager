@@ -7,7 +7,7 @@ layer stays visible rather than hidden behind auto-generated queries.
 """
 
 import os
-from flask import Flask, render_template
+from flask import Flask
 
 from app.db import init_db, close_conn
 
@@ -41,10 +41,6 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.register_blueprint(reports_bp, url_prefix="/api/reports")
 
     @app.get("/")
-    def dashboard():
-        return render_template("index.html")
-
-    @app.get("/healthz")
     def health():
         return {"status": "ok", "service": "inventory-task-manager"}
 
