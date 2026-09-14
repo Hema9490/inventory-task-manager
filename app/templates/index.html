@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventory Ops Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">IO</span>
+      <span class="brand-name">Inventory&nbsp;Ops</span>
+    </div>
+    <nav class="nav">
+      <button class="nav-item active" data-section="overview">Overview</button>
+      <button class="nav-item" data-section="items">Items</button>
+      <button class="nav-item" data-section="tasks">Tasks</button>
+      <button class="nav-item" data-section="orders">Orders</button>
+      <button class="nav-item" data-section="reports">Reports</button>
+    </nav>
+    <div class="sidebar-foot">
+      <span class="pulse-dot" id="connDot"></span>
+      <span id="connLabel">Connecting…</span>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- OVERVIEW -->
+    <section class="view active" id="view-overview">
+      <header class="view-head">
+        <h1>Overview</h1>
+        <p class="sub">Current state of the floor, at a glance.</p>
+      </header>
+
+      <div class="stat-row">
+        <div class="stat">
+          <span class="stat-value" id="statItems">–</span>
+          <span class="stat-label">items tracked</span>
+        </div>
+        <div class="stat stat-danger">
+          <span class="stat-value" id="statLowStock">–</span>
+          <span class="stat-label">low stock</span>
+        </div>
+        <div class="stat stat-amber">
+          <span class="stat-value" id="statOpenTasks">–</span>
+          <span class="stat-label">open tasks</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" id="statOrders">–</span>
+          <span class="stat-label">orders logged</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Low stock alerts</h2>
+          <span class="panel-note">Ordered by severity of shortfall</span>
+        </div>
+        <table class="data-table" id="overviewLowStockTable">
+          <thead><tr><th>SKU</th><th>Item</th><th>Category</th><th>Qty</th><th>Threshold</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <p class="empty-note" id="overviewLowStockEmpty" hidden>Nothing below threshold. Floor is healthy.</p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Next up</h2>
+          <span class="panel-note">Highest-priority open task</span>
+        </div>
+        <div id="overviewNextTask" class="next-task-card">
+          <p class="empty-note">No open tasks.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ITEMS -->
+    <section class="view" id="view-items">
+      <header class="view-head">
+        <h1>Items</h1>
+        <p class="sub">Inventory catalog and stock levels.</p>
+      </header>
+
+      <div class="panel form-panel">
+        <div class="panel-head"><h2>Add item</h2></div>
+        <form id="itemForm" class="inline-form">
+          <input required name="sku" placeholder="SKU (e.g. A100)">
+          <input required name="name" placeholder="Name">
+          <input required name="category" placeholder="Category">
+          <input required type="number" name="quantity" placeholder="Qty" min="0">
+          <input required type="number" name="reorder_threshold" placeholder="Reorder at" min="0">
+          <input required type="number" step="0.01" name="unit_price" placeholder="Unit price">
+          <button type="submit" class="btn btn-primary">Add item</button>
+        </form>
+        <p class="form-error" id="itemFormError" hidden></p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Catalog</h2>
+          <button class="btn btn-ghost" id="sortByQtyBtn">Sort by quantity</button>
+        </div>
+        <table class="data-table" id="itemsTable">
+          <thead><tr><th>SKU</th><th>Name</th><th>Category</th><th>Qty</th><th>Threshold</th><th>Unit price</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TASKS -->
+    <section class="view" id="view-tasks">
+      <header class="view-head">
+        <h1>Tasks</h1>
+        <p class="sub">Operational work queue, ordered by priority.</p>
+      </header>
+
+      <div class="panel form-panel">
+        <div class="panel-head"><h2>Add task</h2></div>
+        <form id="taskForm" class="inline-form">
+          <input required name="title" placeholder="Title">
+          <input name="description" placeholder="Description (optional)">
+          <select name="priority">
+            <option value="1">1 — Urgent</option>
+            <option value="2">2 — High</option>
+            <option value="3" selected>3 — Normal</option>
+            <option value="4">4 — Low</option>
+            <option value="5">5 — Backlog</option>
+          </select>
+          <button type="submit" class="btn btn-primary">Add task</button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Queue</h2>
+          <span class="filter-tabs" id="taskFilterTabs">
+            <button class="filter-tab active" data-status="">All</button>
+            <button class="filter-tab" data-status="open">Open</button>
+            <button class="filter-tab" data-status="in-progress">In progress</button>
+            <button class="filter-tab" data-status="closed">Closed</button>
+          </span>
+        </div>
+        <table class="data-table" id="tasksTable">
+          <thead><tr><th>Priority</th><th>Title</th><th>Status</th><th>Created</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ORDERS -->
+    <section class="view" id="view-orders">
+      <header class="view-head">
+        <h1>Orders</h1>
+        <p class="sub">Record a sale or a restock delivery.</p>
+      </header>
+
+      <div class="panel form-panel">
+        <div class="panel-head"><h2>New order</h2></div>
+        <form id="orderForm" class="inline-form">
+          <select required name="item_id" id="orderItemSelect">
+            <option value="" disabled selected>Select item…</option>
+          </select>
+          <input required type="number" name="quantity" placeholder="Qty" min="1">
+          <select name="order_type">
+            <option value="sale">Sale</option>
+            <option value="restock">Restock</option>
+          </select>
+          <button type="submit" class="btn btn-primary">Log order</button>
+        </form>
+        <p class="form-error" id="orderFormError" hidden></p>
+        <p class="form-success" id="orderFormSuccess" hidden></p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Order history</h2></div>
+        <table class="data-table" id="ordersTable">
+          <thead><tr><th>Type</th><th>Item ID</th><th>Qty</th><th>Logged</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- REPORTS -->
+    <section class="view" id="view-reports">
+      <header class="view-head">
+        <h1>Reports</h1>
+        <p class="sub">Low stock, sales trend, and stockout forecasting.</p>
+      </header>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Low stock</h2></div>
+        <table class="data-table" id="reportLowStockTable">
+          <thead><tr><th>SKU</th><th>Item</th><th>Qty</th><th>Threshold</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Sales trend</h2></div>
+        <table class="data-table" id="reportSalesTable">
+          <thead><tr><th>Category</th><th>Date</th><th>Units sold</th><th>Revenue</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <p class="empty-note" id="reportSalesEmpty" hidden>No sales recorded yet.</p>
+      </div>
+
+      <div class="panel form-panel">
+        <div class="panel-head"><h2>Restock forecast</h2></div>
+        <form id="forecastForm" class="inline-form">
+          <select required name="item_id" id="forecastItemSelect">
+            <option value="" disabled selected>Select item…</option>
+          </select>
+          <button type="submit" class="btn btn-primary">Forecast</button>
+        </form>
+        <div id="forecastResult" class="forecast-result" hidden></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
